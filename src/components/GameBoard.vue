@@ -1,86 +1,121 @@
 <script setup lang="ts">
 	import { ref, computed, watch } from 'vue';
 	const players = ['X', 'O'] as const;
-	const activePlayer = ref('X');
+	const activePlayer = ref('');
 	const squares = ref([
 		['', '', ''],
 		['', '', ''],
 		['', '', ''],
 	]);
-	const gameState = computed<String | null>(() => checkGameState());
-	const checkGameState = () => {
+	const gameState = computed<String | null>(() =>
+		checkGameState(squares.value)
+	);
+	const checkGameState = (board: string[][]) => {
 		let gameState = null;
 		players.forEach((player) => {
 			for (let i = 0; i < 3; i++) {
-				if (squares.value[i].every((cell) => cell === player))
+				if (board[i].every((cell) => cell === player))
 					gameState = player;
-				if (squares.value.every((row) => row[i] === player))
-					gameState = player;
+				if (board.every((row) => row[i] === player)) gameState = player;
 			}
 
-			if (squares.value[1][1] === player) {
-				if (
-					squares.value[0][0] === player &&
-					squares.value[2][2] === player
-				)
+			if (board[1][1] === player) {
+				if (board[0][0] === player && board[2][2] === player)
 					gameState = player;
-				if (
-					squares.value[0][2] === player &&
-					squares.value[2][0] === player
-				)
+				if (board[0][2] === player && board[2][0] === player)
 					gameState = player;
 			}
 		});
-		if (
-			!gameState &&
-			squares.value.every((row) => row.every((cell) => cell))
-		) {
+		if (!gameState && board.every((row) => row.every((cell) => cell))) {
 			return 'tie';
 		}
 		return gameState;
 	};
 	const move = (x: number, y: number) => {
-		if (gameState.value) return;
+		if (gameState.value || !activePlayer.value) return;
 		squares.value[x][y] = activePlayer.value;
 		activePlayer.value =
 			activePlayer.value === players[0] ? players[1] : players[0];
 	};
 	const reset = () => {
-		activePlayer.value = players[0];
+		activePlayer.value = '';
 		squares.value = [
 			['', '', ''],
 			['', '', ''],
 			['', '', ''],
 		];
 	};
+	const chooseFirstPlayer = (player: 0 | 1) => {
+		activePlayer.value = players[player];
+	};
+	const scores: { [key: string]: number } = {
+		O: 10,
+		X: -10,
+		tie: 0,
+	};
 	const bestMove = (board: string[][], npc: 'X' | 'O') => {
 		let copyBoard = [...board];
 		let bestScore = -Infinity;
-		let bestMove: {
+		let move: {
 			i: number;
 			j: number;
 		};
 		for (let i = 0; i < 3; i++) {
 			for (let j = 0; j < 3; j++) {
 				if (copyBoard[i][j] == '') {
-					copyBoard[i][j] = npc;
-					let score = minimax(copyBoard);
+					copyBoard[i][j] = 'O';
+					let score = minimax(copyBoard, false);
+					copyBoard[i][j] = '';
 					if (score > bestScore) {
 						bestScore = score;
-						bestMove = { i, j };
+						move = { i, j };
 					}
-					copyBoard[i][j] = '';
 				}
 			}
 		}
-		return bestMove;
+		return move;
 	};
-	const minimax = (board) => {
-		return 1;
+	const minimax = (
+		board: string[][],
+
+		isMaximizing: boolean
+	) => {
+		let result = checkGameState(board);
+		if (result !== null) {
+			return scores[result];
+		}
+
+		if (isMaximizing) {
+			let bestScore = -Infinity;
+			for (let i = 0; i < 3; i++) {
+				for (let j = 0; j < 3; j++) {
+					if (board[i][j] == '') {
+						board[i][j] = 'O';
+						let score = minimax(board, false);
+						board[i][j] = '';
+						bestScore = Math.max(score, bestScore);
+					}
+				}
+			}
+			return bestScore;
+		} else {
+			let bestScore = Infinity;
+			for (let i = 0; i < 3; i++) {
+				for (let j = 0; j < 3; j++) {
+					if (board[i][j] == '') {
+						board[i][j] = 'X';
+						let score = minimax(board, true);
+						board[i][j] = '';
+						bestScore = Math.min(score, bestScore);
+					}
+				}
+			}
+			return bestScore;
+		}
 	};
 	watch(activePlayer, () => {
 		if (gameState.value) return;
-		if (activePlayer.value === 'X') {
+		if (activePlayer.value === 'X' || '') {
 			return;
 		}
 		let { i, j } = bestMove(squares.value, 'O');
@@ -94,7 +129,12 @@
 			The winner is: {{ gameState }}
 		</p>
 		<p v-else-if="gameState">It's a tie!</p>
-		<p v-else>Active Player is: {{ activePlayer }}</p>
+		<p v-else-if="activePlayer">Active Player is: {{ activePlayer }}</p>
+		<div v-else>
+			<p>Choose Player</p>
+			<button @click="chooseFirstPlayer(0)">Spieler</button>
+			<button @click="chooseFirstPlayer(1)">NPC</button>
+		</div>
 		<div>
 			<div
 				class="row"
@@ -105,12 +145,15 @@
 					class="cell"
 					v-for="(cell, cellIndex) of row"
 					:key="cellIndex"
-					:disabled="!!cell"
+					:disabled="!!cell && !activePlayer"
 					:class="{
 						'cell-x': cell === 'X',
 						'cell-o': cell === 'O',
 					}"
-					:style="{ cursor: !cell ? 'pointer' : 'not-allowed' }"
+					:style="{
+						cursor:
+							!cell && !!activePlayer ? 'pointer' : 'not-allowed',
+					}"
 					@click="move(rowIndex, cellIndex)"
 				>
 					{{ cell }}
