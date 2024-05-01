@@ -131,7 +131,7 @@
 		<p v-else-if="gameState">It's a tie!</p>
 		<p v-else-if="activePlayer">Active Player is: {{ activePlayer }}</p>
 		<div v-else>
-			<p>Choose Player</p>
+			<p>Choose first Player</p>
 			<button @click="chooseFirstPlayer(0)">Spieler</button>
 			<button @click="chooseFirstPlayer(1)">NPC</button>
 		</div>
