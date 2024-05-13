@@ -59,7 +59,7 @@
 		let move: {
 			i: number;
 			j: number;
-		};
+		} = { i: -1, j: -1 };
 		for (let i = 0; i < 3; i++) {
 			for (let j = 0; j < 3; j++) {
 				if (copyBoard[i][j] == '') {
@@ -114,11 +114,11 @@
 		}
 	};
 	watch(activePlayer, () => {
-		if (gameState.value) return;
 		if (activePlayer.value === 'X' || '') {
 			return;
 		}
-		let { i, j } = bestMove(squares.value, 'O');
+		if (gameState.value) return;
+		const { i, j } = bestMove(squares.value, 'O');
 		move(i, j);
 	});
 </script>
